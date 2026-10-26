@@ -14,15 +14,17 @@ PORT ?= 8138
 FONT_DIR := $(HOME)/Library/Fonts
 UPRIGHT_VF := fonts/variable/PaperMono[wght].ttf
 ITALIC_VF := fonts/variable/PaperMono-Italic[wght].ttf
-# Upstream release tag for the original font, used by restore.
+# Upstream release tag for the original font, used by restore and test.
 ORIGINAL_REF ?= v1.000
 # Versions match requirements.txt. The public index overrides any private
 # default index in the user's uv configuration.
 UV_RUN := uv run --no-project --default-index https://pypi.org/simple \
 	--with gftools==0.9.996 --with glyphslib==6.13.1 --with fontmake==3.11.1
+TEST_RUN := uv run --no-project --default-index https://pypi.org/simple \
+	--with uharfbuzz==0.53.3 --with freetype-py==2.5.1 --with pillow==12.0.0 --with fonttools==4.60.1
 
 .DEFAULT_GOAL := install
-.PHONY: install build uninstall restore preview clean help
+.PHONY: install build test uninstall restore preview clean help
 
 install: build                  ## build + install both fonts to ~/Library/Fonts (default)
 	cp "$(UPRIGHT_VF)" "$(ITALIC_VF)" "$(FONT_DIR)/"
@@ -31,6 +33,9 @@ install: build                  ## build + install both fonts to ~/Library/Fonts
 build:                          ## build both variable fonts (italic ANGLE=10 by default)
 	$(UV_RUN) python3 scripts/generate-sources.py --angle $(ANGLE)
 	$(UV_RUN) gftools builder sources/config-fork.yaml
+
+test:                           ## pixel-compare the built fonts with the original
+	$(TEST_RUN) python3 scripts/compare-fonts.py --original-ref $(ORIGINAL_REF) --angle $(ANGLE)
 
 uninstall:                      ## remove both fonts from ~/Library/Fonts
 	rm -f "$(FONT_DIR)/PaperMono[wght].ttf" "$(FONT_DIR)/PaperMono-Italic[wght].ttf"
