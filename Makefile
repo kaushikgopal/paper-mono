@@ -1,12 +1,12 @@
-# Paper Mono with an oblique italic.
+# Paper Mono with an oblique italic and inverted feature defaults.
 #
 #   make            = build + install to ~/Library/Fonts (default)
-#   make build      = build fonts/variable/PaperMono-Italic[wght].ttf
+#   make build      = build the upright and italic variable fonts
 #   make preview    = serve + open preview.html
 #
-# The upright variable font is the one upstream commits in fonts/variable/.
-# The italic is generated from the same Glyphs source by
-# scripts/make-italic.py. Python runs through `uv run`, so no venv is needed.
+# scripts/generate-sources.py derives both styles from the Glyphs source.
+# Coding ligatures and the slashed zero are on by default; ss01 and zero turn
+# them off. Python runs through `uv run`, so no venv is needed.
 
 ANGLE ?= 10
 PORT ?= 8138
@@ -26,9 +26,9 @@ install: build                  ## build + install both fonts to ~/Library/Fonts
 	cp "$(UPRIGHT_VF)" "$(ITALIC_VF)" "$(FONT_DIR)/"
 	@echo "Installed to $(FONT_DIR). Restart apps to pick up the fonts."
 
-build:                          ## build the italic VF (ANGLE=10 by default)
-	$(UV_RUN) python3 scripts/make-italic.py --angle $(ANGLE)
-	$(UV_RUN) gftools builder sources/config-italic.yaml
+build:                          ## build both variable fonts (italic ANGLE=10 by default)
+	$(UV_RUN) python3 scripts/generate-sources.py --angle $(ANGLE)
+	$(UV_RUN) gftools builder sources/config-fork.yaml
 
 uninstall:                      ## remove both fonts from ~/Library/Fonts
 	rm -f "$(FONT_DIR)/PaperMono[wght].ttf" "$(FONT_DIR)/PaperMono-Italic[wght].ttf"
@@ -36,8 +36,8 @@ uninstall:                      ## remove both fonts from ~/Library/Fonts
 preview:                        ## serve + open preview.html (PORT=8138 by default)
 	PORT=$(PORT) bun scripts/serve.ts
 
-clean:                          ## remove generated italic files
-	rm -rf sources/italic sources/instance_ufos sources/build.ninja sources/.ninja_log "$(ITALIC_VF)"
+clean:                          ## remove generated sources and the italic font
+	rm -rf sources/generated sources/instance_ufos sources/build.ninja sources/.ninja_log "$(ITALIC_VF)"
 
 help:                           ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
