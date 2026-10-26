@@ -1,60 +1,44 @@
-SOURCES=$(shell python3 scripts/read-config.py --sources )
-FAMILY=$(shell python3 scripts/read-config.py --family )
-DRAWBOT_SCRIPTS=$(shell ls documentation/*.py)
-DRAWBOT_OUTPUT=$(shell ls documentation/*.py | sed 's/\.py/.png/g')
+# Paper Mono with an oblique italic.
+#
+#   make            = build + install to ~/Library/Fonts (default)
+#   make build      = build fonts/variable/PaperMono-Italic[wght].ttf
+#   make preview    = serve + open preview.html
+#
+# The upright variable font is the one upstream commits in fonts/variable/.
+# The italic is generated from the same Glyphs source by
+# scripts/make-italic.py. Python runs through `uv run`, so no venv is needed.
 
-help:
-	@echo "###"
-	@echo "# Build targets for $(FAMILY)"
-	@echo "###"
-	@echo
-	@echo "  make build:  Builds the fonts and places them in the fonts/ directory"
-	@echo "  make test:   Tests the fonts with fontspector"
-	@echo "  make proof:  Creates HTML proof documents in the proof/ directory"
-	@echo "  make images: Creates PNG specimen images in the documentation/ directory"
-	@echo
+ANGLE ?= 10
+PORT ?= 8138
 
-build: build.stamp
+FONT_DIR := $(HOME)/Library/Fonts
+UPRIGHT_VF := fonts/variable/PaperMono[wght].ttf
+ITALIC_VF := fonts/variable/PaperMono-Italic[wght].ttf
+# Versions match requirements.txt. The public index overrides any private
+# default index in the user's uv configuration.
+UV_RUN := uv run --no-project --default-index https://pypi.org/simple \
+	--with gftools==0.9.996 --with glyphslib==6.13.1 --with fontmake==3.11.1
 
-venv: venv/touchfile
+.DEFAULT_GOAL := install
+.PHONY: install build uninstall preview clean help
 
-customize: venv
-	. venv/bin/activate; python3 scripts/customize.py
+install: build                  ## build + install both fonts to ~/Library/Fonts (default)
+	cp "$(UPRIGHT_VF)" "$(ITALIC_VF)" "$(FONT_DIR)/"
+	@echo "Installed to $(FONT_DIR). Restart apps to pick up the fonts."
 
-build.stamp: venv sources/config.yaml $(SOURCES)
-	rm -rf fonts
-	(for config in sources/config*.yaml; do . venv/bin/activate; gftools builder $$config; done)  && touch build.stamp
+build:                          ## build the italic VF (ANGLE=10 by default)
+	$(UV_RUN) python3 scripts/make-italic.py --angle $(ANGLE)
+	$(UV_RUN) gftools builder sources/config-italic.yaml
 
-venv/touchfile: requirements.txt
-	test -d venv || python3 -m venv venv
-	. venv/bin/activate; pip install -Ur requirements.txt
-	touch venv/touchfile
+uninstall:                      ## remove both fonts from ~/Library/Fonts
+	rm -f "$(FONT_DIR)/PaperMono[wght].ttf" "$(FONT_DIR)/PaperMono-Italic[wght].ttf"
 
-test: build.stamp
-	which fontspector || (echo "fontspector not found. Please install it with 'cargo install fontspector'." && exit 1)
-	TOCHECK=$$(find fonts/variable -type f 2>/dev/null); if [ -z "$$TOCHECK" ]; then TOCHECK=$$(find fonts/ttf -type f 2>/dev/null); fi ; mkdir -p out/ out/fontspector; fontspector --profile googlefonts -l warn --full-lists --succinct --html out/fontspector/fontspector-report.html --ghmarkdown out/fontspector/fontspector-report.md --badges out/badges $$TOCHECK  || echo '::warning file=sources/config.yaml,title=fontspector failures::The fontspector QA check reported errors in your font. Please check the generated report.'
+preview:                        ## serve + open preview.html (PORT=8138 by default)
+	PORT=$(PORT) bun scripts/serve.ts
 
-proof: venv build.stamp
-	TOCHECK=$$(find fonts/variable -type f 2>/dev/null); if [ -z "$$TOCHECK" ]; then TOCHECK=$$(find fonts/ttf -type f 2>/dev/null); fi ; . venv/bin/activate; mkdir -p out/ out/proof; diffenator2 proof $$TOCHECK -o out/proof
+clean:                          ## remove generated italic files
+	rm -rf sources/italic sources/instance_ufos sources/build.ninja sources/.ninja_log "$(ITALIC_VF)"
 
-images: venv $(DRAWBOT_OUTPUT)
-
-%.png: %.py build.stamp
-	. venv/bin/activate; python3 $< --output $@
-
-clean:
-	rm -rf venv
-	find . -name "*.pyc" -delete
-
-update-project-template:
-	npx update-template https://github.com/googlefonts/googlefonts-project-template/
-
-update: venv
-	venv/bin/pip install --upgrade pip-tools
-	# See https://pip-tools.readthedocs.io/en/latest/#a-note-on-resolvers for
-	# the `--resolver` flag below.
-	venv/bin/pip-compile --upgrade --verbose --resolver=backtracking requirements.in
-	venv/bin/pip-sync requirements.txt
-
-	git commit -m "Update requirements" requirements.txt
-	git push
+help:                           ## list targets
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  make %-10s %s\n", $$1, $$2}'
