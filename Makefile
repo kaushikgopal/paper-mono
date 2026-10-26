@@ -14,6 +14,9 @@ PORT ?= 8138
 FONT_DIR := $(HOME)/Library/Fonts
 UPRIGHT_VF := fonts/variable/PaperMono[wght].ttf
 ITALIC_VF := fonts/variable/PaperMono-Italic[wght].ttf
+# Fixed build timestamp so unchanged sources produce byte-identical fonts.
+# The font tools write this time to the head table instead of the build time.
+export SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct -- sources scripts/generate-sources.py)
 # Upstream release tag for the original font, used by restore and test.
 ORIGINAL_REF ?= v1.000
 # Versions match requirements.txt. The public index overrides any private
