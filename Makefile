@@ -14,13 +14,15 @@ PORT ?= 8138
 FONT_DIR := $(HOME)/Library/Fonts
 UPRIGHT_VF := fonts/variable/PaperMono[wght].ttf
 ITALIC_VF := fonts/variable/PaperMono-Italic[wght].ttf
+# Unmodified upstream release, used by `make restore`.
+ORIGINAL_VF ?= $(HOME)/Library/CloudStorage/GoogleDrive-kaushikgopal@gmail.com/My Drive/syc/fonts/mono/paper-mono-v1.000/fonts/variable/PaperMono[wght].ttf
 # Versions match requirements.txt. The public index overrides any private
 # default index in the user's uv configuration.
 UV_RUN := uv run --no-project --default-index https://pypi.org/simple \
 	--with gftools==0.9.996 --with glyphslib==6.13.1 --with fontmake==3.11.1
 
 .DEFAULT_GOAL := install
-.PHONY: install build uninstall preview clean help
+.PHONY: install build uninstall restore preview clean help
 
 install: build                  ## build + install both fonts to ~/Library/Fonts (default)
 	cp "$(UPRIGHT_VF)" "$(ITALIC_VF)" "$(FONT_DIR)/"
@@ -32,6 +34,12 @@ build:                          ## build both variable fonts (italic ANGLE=10 by
 
 uninstall:                      ## remove both fonts from ~/Library/Fonts
 	rm -f "$(FONT_DIR)/PaperMono[wght].ttf" "$(FONT_DIR)/PaperMono-Italic[wght].ttf"
+
+restore:                        ## reinstall the original upstream font and remove the italic
+	@test -f "$(ORIGINAL_VF)" || { echo "Original font not found: $(ORIGINAL_VF)"; exit 1; }
+	rm -f "$(FONT_DIR)/PaperMono-Italic[wght].ttf"
+	cp "$(ORIGINAL_VF)" "$(FONT_DIR)/PaperMono[wght].ttf"
+	@echo "Restored original Paper Mono to $(FONT_DIR). Restart apps to pick it up."
 
 preview:                        ## serve + open preview.html (PORT=8138 by default)
 	PORT=$(PORT) bun scripts/serve.ts
