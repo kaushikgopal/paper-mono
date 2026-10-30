@@ -19,10 +19,10 @@ ITALIC_VF := fonts/variable/PaperMono-Italic[wght].ttf
 export SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct -- sources scripts/generate-sources.py)
 # Upstream release tag for the original font, used by restore and test.
 ORIGINAL_REF ?= v1.000
-# Versions match requirements.txt. The public index overrides any private
-# default index in the user's uv configuration.
+# The build lock pins transitive dependencies as well as the font tools.
+# The public index overrides any private default index in the uv configuration.
 UV_RUN := uv run --no-project --default-index https://pypi.org/simple \
-	--with gftools==0.9.996 --with glyphslib==6.13.1 --with fontmake==3.11.1
+	--with-requirements requirements-build.txt
 TEST_RUN := uv run --no-project --default-index https://pypi.org/simple \
 	--with uharfbuzz==0.53.3 --with freetype-py==2.5.1 --with pillow==12.0.0 --with fonttools==4.60.1
 
